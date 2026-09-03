@@ -1,0 +1,58 @@
+name: Build aapt2 (on-device)
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - ".github/workflows/build-aapt2.yml"
+
+jobs:
+  build-aapt2:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Set up Android NDK
+        uses: android-actions/setup-android@v3
+      - run: sdkmanager --install "ndk;27.3.13750724"
+
+      - name: Install protoc (required by aapt2's build)
+        run: |
+          wget -q https://github.com/protocolbuffers/protobuf/releases/download/v21.12/protoc-21.12-linux-x86_64.zip
+          sudo unzip -o -p protoc-21.12-linux-x86_64.zip bin/protoc -d /usr/local/bin/
+          sudo chmod +x /usr/local/bin/protoc
+          protoc --version
+
+      - name: Clone ReVanced's aapt2 build system (real, maintained, arm-capable)
+        run: |
+          git clone --recurse-submodules --shallow-submodules --depth 1 \
+            https://github.com/ReVanced/aapt2.git aapt2-src
+
+      - name: Build aapt2 for armeabi-v7a
+        working-directory: aapt2-src
+        env:
+          ANDROID_NDK: /usr/local/lib/android/sdk/ndk/27.3.13750724
+        run: |
+          chmod +x patch.sh build.sh
+          ./patch.sh
+          ./build.sh armeabi-v7a
+
+      - name: Locate and verify the output binary
+        run: |
+          BIN=$(find aapt2-src/build -iname "aapt2*" -type f | head -1)
+          echo "Found: $BIN"
+          file "$BIN"
+          cp "$BIN" aapt2-armeabi-v7a
+
+      - name: Upload as a build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: aapt2-armeabi-v7a
+          path: aapt2-armeabi-v7a
+
+      - name: Attach to a release (stable download URL for the IDE to bundle)
+        if: github.ref == 'refs/heads/main'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: aapt2-armeabi-v7a
+          name: "aapt2 (armeabi-v7a, on-device)"
+          files: aapt2-armeabi-v7a
+          fail_on_unmatched_files: false
