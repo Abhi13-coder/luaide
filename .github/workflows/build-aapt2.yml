@@ -9,6 +9,8 @@ on:
 jobs:
   build-aapt2:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
       - name: Set up Android NDK
         uses: android-actions/setup-android@v3
