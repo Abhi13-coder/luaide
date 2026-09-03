@@ -1,0 +1,4 @@
+<resources>
+    <!-- app_name is injected at build time via resValue() in build.gradle.kts,
+         based on the packaged project's name -->
+</resources>
